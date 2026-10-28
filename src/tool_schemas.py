@@ -36,6 +36,7 @@ _REQUIRED_NATIVE_TOOL_ARGS = {
     "inspect_media": ("path",),
     "extract_text": ("path",),
     "transcribe_media": ("path",),
+    "psd_tool": ("path",),
     "read_file": ("path",),
     "write_file": ("path",),
     "edit_file": ("path",),
@@ -485,6 +486,24 @@ FUNCTION_TOOL_SCHEMAS = [
                     "model": {"type": "string", "enum": ["tiny", "base", "small"], "description": "Optional local Whisper size. Focused ranges up to five minutes default to small for accuracy; longer or unbounded recordings default to base for speed."},
                     "output_path": {"type": "string", "description": "Optional workspace destination for the timestamped transcript. Use .txt for readable timestamped text, .jsonl for one {start, end, text} object per speech segment, or .srt/.vtt for subtitle files. If the requested final artifact is one of these formats, pass its path directly so the tool writes it atomically. If omitted, a .txt transcript is saved automatically under /workspace/.odysseus/transcripts/."},
                     "timestamp_precision": {"type": "integer", "minimum": 0, "maximum": 3, "description": "Decimal places for JSONL start/end seconds (default 3). Match an explicitly requested rounding precision."}
+                },
+                "required": ["path"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "psd_tool",
+            "description": "Read-only Photoshop PSD interop for workspace .psd/.psb files. action=info lists the layer tree (names, kinds, visibility, bounding boxes, group depth) without opening the file for edits. action=export renders the visible-layer composite, or one layer by exact name or listed index, and saves it as a PNG inside /workspace; the original PSD is never modified. Use inspect_media on the exported PNG for further visual work, or edit_image on it for creative edits.",
+            "parameters": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "path": {"type": "string", "description": "Workspace path to a .psd or .psb file, for example /workspace/design.psd"},
+                    "action": {"type": "string", "enum": ["info", "export"], "description": "info lists the layer structure; export renders and saves a PNG"},
+                    "layer": {"type": "string", "description": "For export only: exact layer name (case-insensitive) or 1-based listed index. Omit to export the visible-layer composite."},
+                    "output_path": {"type": "string", "description": "For export only: destination PNG path inside /workspace; never /tmp. The source PSD is preserved."}
                 },
                 "required": ["path"]
             }

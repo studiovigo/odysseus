@@ -117,7 +117,7 @@ _register(
     result_integrity=ResultIntegrity.EXTERNAL_UNTRUSTED,
 )
 _register(
-    {"inspect_media", "extract_text", "transcribe_media"},
+    {"inspect_media", "extract_text", "transcribe_media", "psd_tool"},
     ToolEffect.READ_WORKSPACE,
     result_integrity=ResultIntegrity.WORKSPACE_UNTRUSTED,
 )
@@ -554,8 +554,9 @@ def capabilities_for_action(tool_name: Any, content: Any) -> ToolCapabilities:
     # Media inspection is normally read-only, but its export forms create
     # workspace artifacts.  Classify the concrete call instead of treating
     # every inspect_media invocation as a read; completion and security gates
-    # both rely on these effects being truthful.
-    if tool_name == "inspect_media":
+    # both rely on these effects being truthful.  psd_tool export follows the
+    # same rule: only the PNG-writing call gains WRITE_WORKSPACE.
+    if tool_name in {"inspect_media", "psd_tool"}:
         payload: Any = content
         if isinstance(payload, str):
             try:
