@@ -114,6 +114,13 @@ def _find_browser_executable() -> str:
     configured = os.environ.get("ODYSSEUS_BROWSER_EXECUTABLE", "").strip()
     if configured:
         return configured
+    try:
+        from src.settings import load_settings
+        chosen = str(load_settings().get("browser_executable") or "").strip()
+    except Exception:
+        chosen = ""
+    if chosen and os.path.isfile(chosen):
+        return chosen
     for name in ("google-chrome", "chromium", "chromium-browser"):
         path = shutil.which(name)
         if path:
@@ -127,6 +134,28 @@ def _find_browser_executable() -> str:
         if os.path.isfile(candidate):
             return candidate
     return ""
+
+
+def detect_browsers() -> list[dict]:
+    """Installed Chromium-based browsers (Playwright MCP only drives Chromium)."""
+    roots = [os.environ.get(v, "") for v in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA")]
+    known = [
+        ("Google Chrome", [r"Google\Chrome\Application\chrome.exe"],
+         ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "/usr/bin/google-chrome", "/opt/google/chrome/chrome"]),
+        ("Microsoft Edge", [r"Microsoft\Edge\Application\msedge.exe"],
+         ["/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "/usr/bin/microsoft-edge"]),
+        ("Brave", [r"BraveSoftware\Brave-Browser\Application\brave.exe"],
+         ["/Applications/Brave Browser.app/Contents/MacOS/Brave Browser", "/usr/bin/brave-browser"]),
+        ("Chromium", [r"Chromium\Application\chrome.exe"],
+         ["/usr/bin/chromium", "/usr/bin/chromium-browser"]),
+    ]
+    found = []
+    for label, win_rel, posix in known:
+        paths = [os.path.join(r, rel) for r in roots if r for rel in win_rel] + posix
+        path = next((p for p in paths if os.path.isfile(p)), "")
+        if path:
+            found.append({"label": label, "path": path})
+    return found
 
 
 def _browser_mcp_args(args: list[str]) -> list[str]:

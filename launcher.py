@@ -131,6 +131,32 @@ def open_browser(url):
     webbrowser.open(url)
 
 
+def run_desktop_window(url):
+    import urllib.request
+    import webview
+
+    # Wait until the backend answers (or a second instance's server already does).
+    for _ in range(240):
+        try:
+            urllib.request.urlopen(url, timeout=2)
+            break
+        except Exception:
+            time.sleep(0.5)
+
+    try:
+        if splash_root:
+            splash_root.after(0, splash_root.destroy)
+    except Exception:
+        pass
+
+    webview.settings['ALLOW_DOWNLOADS'] = True
+    webview.create_window("Odysseus", url, width=1280, height=860, min_size=(800, 600))
+    # private_mode=False keeps the login session/cookies between launches.
+    webview.start(private_mode=False,
+                  storage_path=os.path.join(os.path.expanduser("~"), ".odysseus", "webview"))
+    os._exit(0)  # window closed -> stop the backend too
+
+
 if __name__ == "__main__":
     import uvicorn
     # Import the FastAPI app from app.py
@@ -141,9 +167,9 @@ if __name__ == "__main__":
     url = f"http://{bind_host}:{bind_port}"
 
     if getattr(sys, 'frozen', False):
-        # Start browser manager thread
-        threading.Thread(target=open_browser, args=(url,), daemon=True).start()
-        # Start system tray manager thread
-        threading.Thread(target=setup_system_tray, args=(url,), daemon=True).start()
-
-    uvicorn.run(app, host=bind_host, port=bind_port, log_level="info")
+        # Desktop mode: server in background, UI in a native WebView2 window.
+        server = uvicorn.Server(uvicorn.Config(app, host=bind_host, port=bind_port, log_level="info"))
+        threading.Thread(target=server.run, daemon=True).start()
+        run_desktop_window(url)
+    else:
+        uvicorn.run(app, host=bind_host, port=bind_port, log_level="info")

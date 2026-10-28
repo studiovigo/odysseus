@@ -63,6 +63,11 @@ DEFAULT_SETTINGS = {
     "stt_provider": "disabled",
     "stt_model": "base",
     "stt_language": "",
+    # Web toggle defaults ON in Chat mode too (Agent mode already defaults on).
+    # The per-chat toggle can still switch it off.
+    "web_access_default": False,
+    # Chromium-based browser binary for the built-in browser tool; "" = auto-detect.
+    "browser_executable": "",
     "search_provider": "searxng",
     # Default fallback chain — when the primary provider fails or
     # rate-limits, we try DuckDuckGo next. Free, no API key required, so

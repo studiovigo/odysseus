@@ -185,6 +185,12 @@ def setup_search_routes(config) -> APIRouter:
             })
         return providers
 
+    @router.get("/api/search/browsers")
+    async def list_browsers():
+        """Installed Chromium-based browsers the built-in browser tool can use."""
+        from src.builtin_mcp import detect_browsers
+        return detect_browsers()
+
     @router.post("/api/search/query")
     async def search_with_provider(request: Request) -> Dict[str, Any]:
         """Search using a specific provider. Used by compare search mode."""

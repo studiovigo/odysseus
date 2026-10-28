@@ -883,6 +883,47 @@ async function initSearchSettings() {
   }
   refreshStatus();
 
+  // ── Web access: default-on toggle + browser choice ──
+  (async function initWebAccess() {
+    var webChk = el('set-webAccessDefault');
+    var brSel = el('set-browserExecutable');
+    var brCustom = el('set-browserCustom');
+    var brRow = el('set-browserCustomRow');
+    var wmsg = el('set-webAccessMsg');
+    if (!webChk || !brSel) return;
+    try {
+      var browsers = await (await fetch('/api/search/browsers', { credentials: 'same-origin' })).json();
+      browsers.forEach(function(b) {
+        var o = document.createElement('option');
+        o.value = b.path; o.textContent = b.label + ' (' + b.path + ')';
+        brSel.appendChild(o);
+      });
+      brSel.appendChild(new Option('Custom path…', '__custom__'));
+      var cur = _settings.browser_executable || '';
+      if (cur && !browsers.some(function(b) { return b.path === cur; })) {
+        brSel.value = '__custom__'; brCustom.value = cur; brRow.style.display = 'flex';
+      } else {
+        brSel.value = cur;
+      }
+    } catch (e) { console.warn('Failed to load browsers', e); }
+    webChk.checked = !!_settings.web_access_default;
+    async function saveWeb() {
+      brRow.style.display = brSel.value === '__custom__' ? 'flex' : 'none';
+      try {
+        await _postSettings({
+          web_access_default: webChk.checked,
+          browser_executable: brSel.value === '__custom__' ? brCustom.value.trim() : brSel.value,
+        });
+        window._webAccessDefault = webChk.checked;
+        _settings.web_access_default = webChk.checked;
+        wmsg.textContent = 'Saved'; wmsg.style.color = 'var(--fg)';
+      } catch (e) { wmsg.textContent = e.status === 403 ? 'Admin access is required to change these settings.' : 'Failed to save'; wmsg.style.color = 'var(--red)'; }
+    }
+    webChk.addEventListener('change', saveWeb);
+    brSel.addEventListener('change', saveWeb);
+    brCustom.addEventListener('change', saveWeb);
+  })();
+
   async function saveSearch() {
     try {
       var prov = provSel.value;

@@ -2589,7 +2589,7 @@ def setup_chat_routes(
             _explicit_web_intent = (
                 _explicit_url_target
                 or bool(re.search(
-                r"\b(search|look\s+(?:(?:this|that|it|them|these|those)\s*)?up|lookup|find\s*out|google|browse|web|online|latest|current|today|news|weather|forecast|rate|exchange\s+rate)\b",
+                r"\b(search|look\s+(?:(?:this|that|it|them|these|those)\s*)?up|lookup|find\s*out|google|pesquis\w*|busc(?:a|ar|ue)|procur(?:a|ar|e)|not[ií]cias|browse|web|online|latest|current|today|news|weather|forecast|rate|exchange\s+rate)\b",
                 _msg_l,
                 ))
                 or requires_external_web_verification(message)
@@ -3289,6 +3289,14 @@ def setup_chat_routes(
             _turn_capabilities = _turn_capabilities | {"search_browser"}
         if _use_turn_contract and _external_discovery_intent:
             _turn_capabilities = _turn_capabilities | {"search_browser"}
+        # Web toggle on + web-shaped request in any language: the lexical
+        # family classifier is English-only, so grant the family explicitly.
+        _web_toggle_grant = bool(
+            _search_enabled and _explicit_web_intent
+            and not _explicitly_denies_web_lookup(message)
+        )
+        if _use_turn_contract and _web_toggle_grant:
+            _turn_capabilities = _turn_capabilities | {"search_browser"}
         if (
             _use_turn_contract
             and not _turn_capabilities
@@ -3567,7 +3575,7 @@ def setup_chat_routes(
             image_attachment=any(str(a.get('mime') or '').startswith('image/')
                                  for a in (ctx.preprocessed.attachment_meta or [])),
             capabilities=({'search_browser'} if (
-                _explicit_browser_intent or _external_discovery_intent
+                _explicit_browser_intent or _external_discovery_intent or _web_toggle_grant
             ) else ()),
         )
         if exact_tool_approval is not None:

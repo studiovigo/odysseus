@@ -1565,6 +1565,9 @@ function initializeEventListeners() {
       if (overflowTts) {
         overflowTts.style.display = ttsOff ? 'none' : '';
       }
+      // Web toggle default for Chat mode; re-apply once the setting is known.
+      window._webAccessDefault = !!settings.web_access_default;
+      document.dispatchEvent(new CustomEvent('web-default-ready'));
     })
     .catch(() => {});
 
@@ -1780,8 +1783,15 @@ function initializeEventListeners() {
     const state = loadToggleState();
     const key = _modeKey(stateKey, mode);
     if (Object.prototype.hasOwnProperty.call(state, key)) return !!state[key];
-    return mode === 'agent'; // default: ON in agent, OFF in chat
+    // default: ON in agent, OFF in chat (web also ON in chat if enabled in Settings → Search)
+    return mode === 'agent' || (stateKey === 'web' && !!window._webAccessDefault);
   }
+  document.addEventListener('web-default-ready', () => {
+    const mode = loadToggleState().mode || 'chat';
+    applyModeToToggles(mode);
+    const btn = el('web-toggle-btn'), chk = el('web-toggle');
+    if (btn && chk) btn.setAttribute('aria-pressed', String(chk.checked));
+  });
 
   function saveToolPref(stateKey, mode, value) {
     const state = loadToggleState();

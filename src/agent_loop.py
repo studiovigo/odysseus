@@ -15005,6 +15005,14 @@ def _build_system_prompt(
                     relevant_skills = [
                         skill for skill in relevant_skills if _active_skill_is_eligible(skill)
                     ][:max(0, _skill_max_injected or len(relevant_skills))]
+                # Owner-pinned skills (prefs "default_skills") ride along every
+                # turn, still behind the published + audit-pass gate.
+                _pinned = set(_prefs.get("default_skills") or ()) - {s.get("name") for s in relevant_skills}
+                relevant_skills = list(relevant_skills) + [
+                    s for s in all_skills
+                    if s.get("name") in _pinned and s.get("status") == "published"
+                    and str(s.get("audit_verdict") or "").lower() == "pass"
+                ]
                 lines = [""]
                 if relevant_skills:
                     if active_skill_names:

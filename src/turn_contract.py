@@ -6160,6 +6160,11 @@ def requested_capabilities(message: str, history: Iterable = (), *, active_docum
     families = set().union(*(_clause_capabilities(clause) for clause in clauses))
     if re.search(r"(?:file://)?/tmp_workspace(?:/|\b)", text, re.I):
         families.add("shell_files")
+    # Windows absolute paths and Portuguese file nouns name local files too.
+    if re.search(r"(?<![\w/])[A-Za-z]:[\\/]|\b(?:pastas?|arquivos?|diret[oó]rios?)\b", text, re.I):
+        families.add("shell_files")
+    if not families and re.search(r"\bskills?\b", text, re.I):
+        families.add("skills")
     if (
         re.search(r"\bgithub\b", text, re.I)
         and re.search(r"\b(?:repositor(?:y|ies)|repos?|contributors?|commits?|pushed_at)\b", text, re.I)
