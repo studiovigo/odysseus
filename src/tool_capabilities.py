@@ -604,6 +604,70 @@ def capabilities_for_action(tool_name: Any, content: Any) -> ToolCapabilities:
     )
 
 
+class ToolOutcome(str, Enum):
+    """Per-result outcome taxonomy for one executed tool call.
+
+    ``tool_result_is_successful`` answers one binary question; this enum keeps
+    the richer distinctions the completion gate and callers need:
+
+    * ``SUCCESS``     - executed without error and produced observable output.
+    * ``FAILED``      - the tool reported an error or a non-zero exit code.
+    * ``BLOCKED``     - execution was denied by policy, approval, or contract.
+    * ``INCONCLUSIVE``- no error, but the result carries no observable content;
+    *                  a bare ``{"exit_code": 0}`` proves nothing was produced.
+    * ``UNEXPECTED``  - valid output that does not satisfy the caller's
+                        expectation predicate (only when ``expected`` is given).
+    """
+
+    SUCCESS = "success"
+    FAILED = "failed"
+    BLOCKED = "blocked"
+    INCONCLUSIVE = "inconclusive"
+    UNEXPECTED = "unexpected"
+
+
+_RESULT_CONTENT_EXEMPT_KEYS = frozenset(
+    {
+        "approval_required",
+        "blocked",
+        "error",
+        "exit_code",
+        "failure_kind",
+        "policy",
+        "success",
+        "untrusted_content",
+    }
+)
+
+
+def _result_has_observable_content(result: Mapping[str, Any]) -> bool:
+    return any(
+        key not in _RESULT_CONTENT_EXEMPT_KEYS and value not in (None, "", [], {}, ())
+        for key, value in result.items()
+    )
+
+
+def classify_tool_result(result: Any, expected=None) -> ToolOutcome:
+    """Classify one tool result dict into the shared outcome taxonomy.
+
+    ``expected`` is an optional predicate over the result dict; when provided
+    and the result would otherwise be ``SUCCESS``, a predicate returning False
+    yields ``UNEXPECTED`` (valid execution, different outcome than wanted).
+    Non-dict results are ``FAILED``: the dispatcher contract is a dict.
+    """
+    if not isinstance(result, dict):
+        return ToolOutcome.FAILED
+    if result.get("blocked") or result.get("approval_required"):
+        return ToolOutcome.BLOCKED
+    if result.get("error") or result.get("exit_code") not in (None, 0) or result.get("success") is False:
+        return ToolOutcome.FAILED
+    if not _result_has_observable_content(result):
+        return ToolOutcome.INCONCLUSIVE
+    if expected is not None and not expected(result):
+        return ToolOutcome.UNEXPECTED
+    return ToolOutcome.SUCCESS
+
+
 def tool_result_is_successful(result: Any) -> bool:
     """Return whether a result actually introduced successful tool output."""
     return bool(

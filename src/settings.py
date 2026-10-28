@@ -68,6 +68,17 @@ DEFAULT_SETTINGS = {
     "web_access_default": False,
     # Chromium-based browser binary for the built-in browser tool; "" = auto-detect.
     "browser_executable": "",
+    # Browser session mode for the built-in Playwright MCP server.
+    #   "isolated"  (default) — each server start uses a throwaway profile;
+    #                nothing persists between restarts. Safest default.
+    #   "persistent" — Chromium uses an Odysseus-owned profile directory under
+    #                <app_root>/data/browser-profile. Site logins and cookies
+    #                persist across restarts so the agent can keep using
+    #                sites the user logged into via the browser tool. The
+    #                profile belongs to Odysseus, never to the user's
+    #                personal Chrome; cookie values stay on local disk and
+    #                are never exposed to the model context.
+    "browser_session_profile": "isolated",
     "search_provider": "searxng",
     # Default fallback chain — when the primary provider fails or
     # rate-limits, we try DuckDuckGo next. Free, no API key required, so
@@ -117,6 +128,17 @@ DEFAULT_SETTINGS = {
     # unbounded model/API bill. Other values are bounded to [60, 86400].
     # Tune via Settings or by editing data/settings.json.
     "research_run_timeout_seconds": 1800,
+    # Per-message execution limits. Semantics:
+    #   agent_max_tool_calls: 0 = unlimited (default); >0 caps executed tool
+    #     calls per turn (admin write clamps to 0..1000). The loop enforces the
+    #     cap before dispatching and emits a budget_exceeded event; a missing,
+    #     null, or non-numeric value falls back to 0 via the guarded read in
+    #     routes/chat_routes.py.
+    #   agent_max_rounds: clamped 1..200 on admin write; 20 is the default when
+    #     the key is missing. A value of 0 is not "unlimited" here — the admin
+    #     route raises it to the 1..200 floor. Runtime paths may still resolve
+    #     an adaptive (unbounded-by-rounds) mode for workspace coding turns,
+    #     guarded by cancellation and evidence-based stop conditions.
     "agent_max_tool_calls": 0,
     "agent_max_rounds": 20,  # per-message agent step cap (clamped 1..200)
     # Soft input-token budget for the agent loop. The DEFAULT value (6000) is the

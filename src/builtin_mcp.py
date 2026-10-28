@@ -158,15 +158,53 @@ def detect_browsers() -> list[dict]:
     return found
 
 
+def _browser_session_mode() -> str:
+    """Resolve the browser session mode setting; unknown values stay isolated."""
+    try:
+        from src.settings import load_settings
+        mode = str(load_settings().get("browser_session_profile") or "").strip().lower()
+    except Exception:
+        mode = ""
+    return mode if mode in ("isolated", "persistent") else "isolated"
+
+
+def _persistent_profile_dir() -> str:
+    """Odysseus-owned Chromium profile dir; never the user's personal profile."""
+    return os.path.join(get_app_root(), "data", "browser-profile")
+
+
 def _browser_mcp_args(args: list[str]) -> list[str]:
-    """Return Playwright MCP args with a concrete browser executable when found."""
+    """Return Playwright MCP args with a concrete browser executable when found.
+
+    Session-mode precedence:
+    1. an explicit ``--user-data-dir`` already in args is respected as-is;
+    2. the ``browser_session_profile`` setting ("persistent") pins the
+       server to the Odysseus-owned profile directory under data/;
+    3. the legacy ``ODYSSEUS_BROWSER_ISOLATED=0`` opt-out keeps Playwright
+       MCP's own default profile behavior (no dir pinned);
+    4. otherwise ``--isolated`` (throwaway profile, safest default).
+    """
     out = list(args or [])
     if "--executable-path" not in out:
         browser = _find_browser_executable()
         if browser:
             out.extend(["--executable-path", browser])
-    if os.environ.get("ODYSSEUS_BROWSER_ISOLATED", "1").lower() not in ("0", "false", "no"):
-        if "--isolated" not in out and "--user-data-dir" not in out:
+    explicit_profile = "--user-data-dir" in out
+    if not explicit_profile and _browser_session_mode() == "persistent":
+        profile_dir = _persistent_profile_dir()
+        try:
+            os.makedirs(profile_dir, exist_ok=True)
+            explicit_profile = True
+            out.extend(["--user-data-dir", profile_dir])
+        except OSError as exc:
+            # Fail toward the safe default rather than an unstartable server.
+            logger.warning(
+                "Persistent browser profile unavailable (%s); using isolated mode", exc
+            )
+    if explicit_profile:
+        pass
+    elif os.environ.get("ODYSSEUS_BROWSER_ISOLATED", "1").lower() not in ("0", "false", "no"):
+        if "--isolated" not in out:
             out.append("--isolated")
     if os.environ.get("ODYSSEUS_BROWSER_NO_SANDBOX", "1").lower() not in ("0", "false", "no"):
         if "--no-sandbox" not in out and "--sandbox" not in out:
