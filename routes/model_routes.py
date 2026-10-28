@@ -3034,11 +3034,18 @@ def setup_model_routes(model_discovery):
     def list_tools():
         """List all available tools with their enabled/disabled status."""
         from src.agent_tools import TOOL_TAGS
+        from src.tool_schemas import FUNCTION_TOOL_SCHEMAS
         settings = _load_settings()
         disabled = set(settings.get("disabled_tools", []))
+        # Schema descriptions back the UI label for tools without curated meta.
+        descs = {}
+        for schema in FUNCTION_TOOL_SCHEMAS:
+            fn = schema.get("function") or schema
+            if fn.get("name"):
+                descs[fn["name"]] = (fn.get("description") or "").split(". ")[0][:120]
         tools = []
         for tag in sorted(TOOL_TAGS):
-            tools.append({"id": tag, "enabled": tag not in disabled})
+            tools.append({"id": tag, "enabled": tag not in disabled, "desc": descs.get(tag, "")})
         return {"tools": tools}
 
     class ToolsUpdate(BaseModel):

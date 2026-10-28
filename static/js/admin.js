@@ -2693,6 +2693,20 @@ const TOOL_META = {
   manage_tokens:     { name: 'API Tokens',       desc: 'Manage API access tokens',        cat: 'System',     ctx: '~100' },
   manage_settings:   { name: 'Settings',         desc: 'Change app settings',             cat: 'System',     ctx: '~100' },
 };
+// Category for tools without curated TOOL_META; their label/desc come from /api/tools.
+const TOOL_CAT = {
+  Code: ['host_shell', 'edit_file', 'apply_patch', 'grep', 'glob', 'ls', 'get_workspace', 'todowrite', 'manage_bg_jobs', 'update_plan'],
+  Search: ['web_fetch', 'private_browser', 'get_weather', 'youtube_tool', 'trigger_research', 'manage_research'],
+  Media: ['inspect_media', 'extract_text', 'transcribe_media', 'pdf_extract', 'edit_image', 'psd_tool'],
+  Productivity: ['manage_notes', 'manage_calendar', 'manage_contact', 'resolve_contact'],
+  Models: ['download_model', 'serve_model', 'list_served_models', 'stop_served_model', 'tail_serve_output', 'list_downloads',
+           'cancel_download', 'search_hf_models', 'list_cached_models', 'list_serve_presets', 'serve_preset',
+           'adopt_served_model', 'list_cookbook_servers'],
+  System: ['app_api', 'ask_user'],
+};
+const _toolCatOf = Object.fromEntries(
+  Object.entries(TOOL_CAT).flatMap(([cat, ids]) => ids.map(id => [id, cat]))
+);
 
 async function loadBuiltinTools() {
   const list = el('adm-builtin-tools-list');
@@ -2714,14 +2728,19 @@ async function loadBuiltinTools() {
     // Group by category
     const groups = {};
     for (const t of tools) {
-      const meta = TOOL_META[t.id] || { name: t.id, desc: '', cat: 'Other', ctx: '?' };
+      const meta = TOOL_META[t.id] || {
+        name: t.id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        desc: t.desc || '',
+        cat: _toolCatOf[t.id] || (/email|spam|sender|unsubscribe|attachment/.test(t.id) ? 'Email' : 'Other'),
+        ctx: '?',
+      };
       const cat = meta.cat;
       if (!groups[cat]) groups[cat] = [];
       groups[cat].push({ ...t, ...meta });
     }
 
     // Category order
-    const catOrder = ['Code', 'Search', 'Documents', 'Media', 'Knowledge', 'Multi-Agent', 'Sessions', 'System', 'Other'];
+    const catOrder = ['Code', 'Search', 'Documents', 'Media', 'Email', 'Productivity', 'Knowledge', 'Multi-Agent', 'Sessions', 'Models', 'System', 'Other'];
     let html = '';
     for (const cat of catOrder) {
       const items = groups[cat];

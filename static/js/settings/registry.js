@@ -113,11 +113,11 @@ export const SETTINGS_PANELS = Object.freeze([
 
   definePanel({
     id: 'tools',
-    label: 'Agent Tools',
+    label: 'Workspace',
     group: 'administration',
     controller: 'admin',
     adminOnly: true,
-    keywords: ['agent', 'tools'],
+    keywords: ['workspace', 'agent', 'tools'],
   }),
   definePanel({
     id: 'users',
